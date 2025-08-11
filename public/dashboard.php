@@ -64,6 +64,13 @@ require_login(); // Redirects to login if not logged in
             </select>
           </div>
 
+          <!-- Amount tendered -->
+          <div class="mb-3" id="amountTenderedGroup">
+            <label for="amount_tendered" class="form-label">Amount Tendered</label>
+            <input type="number" step="0.01" class="form-control" id="amount_tendered">
+          </div>
+
+
           <div class="mb-3" id="mpesaPhoneGroup" style="display:none;">
             <label for="mpesaPhone" class="form-label">MPESA Phone Number</label>
             <input
