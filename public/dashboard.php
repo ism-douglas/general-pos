@@ -133,13 +133,32 @@ function fetchProducts(query = '') {
     });
 }
 
+// function renderProducts() {
+//   productListEl.innerHTML = '';
+//   products.forEach(prod => {
+//     const col = document.createElement('div');
+//     col.className = 'col-md-4';
+//     col.innerHTML = `
+//       <div class="card product-card p-2 h-100" onclick="addToCart(${prod.id})">
+//         <div class="card-body">
+//           <h6 class="card-title">${prod.name}</h6>
+//           <p class="card-text small mb-1 text-muted">${prod.category || ''}</p>
+//           <p class="fw-bold mb-0">KES ${parseFloat(prod.price).toFixed(2)}</p>
+//           <span class="badge bg-secondary">Stock: ${prod.stock_qty}</span>
+//         </div>
+//       </div>
+//     `;
+//     productListEl.appendChild(col);
+//   });
+// }
+
 function renderProducts() {
   productListEl.innerHTML = '';
   products.forEach(prod => {
     const col = document.createElement('div');
     col.className = 'col-md-4';
     col.innerHTML = `
-      <div class="card product-card p-2 h-100" onclick="addToCart(${prod.id})">
+      <div class="card product-card p-2 h-100" onclick="addToCart('${prod.id}')">
         <div class="card-body">
           <h6 class="card-title">${prod.name}</h6>
           <p class="card-text small mb-1 text-muted">${prod.category || ''}</p>
@@ -152,8 +171,10 @@ function renderProducts() {
   });
 }
 
+
 function addToCart(id) {
-  const prod = products.find(p => p.id === id);
+  const prod = products.find(p => Number(p.id) === Number(id));
+
   if (!prod || prod.stock_qty <= 0) {
     alert('Out of stock');
     return;
