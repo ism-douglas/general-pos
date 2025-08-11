@@ -251,7 +251,7 @@ btnCompleteSale.addEventListener('click', async () => {
   btnCompleteSale.textContent = 'Processing...';
 
   try {
-    const response = await fetch('/api/sales.php', {
+    const response = await fetch('api/sales.php', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload)
@@ -261,7 +261,7 @@ btnCompleteSale.addEventListener('click', async () => {
 
     if (result.success) {
       // Fetch receipt HTML
-      fetch(`/api/receipt.php?sale_id=${result.sale_id}`)
+      fetch(`api/receipt.php?sale_id=${result.sale_id}`)
         .then(res => res.text())
         .then(html => {
           receiptContentEl.innerHTML = html;
