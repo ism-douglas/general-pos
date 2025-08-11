@@ -11,17 +11,31 @@ if (!$sale_id) {
 }
 
 // Fetch sale + user
-$stmt = $pdo->prepare("SELECT s.*, u.username FROM sales s JOIN users u ON s.user_id = u.id WHERE s.id = ?");
+$stmt = $pdo->prepare("SELECT s.*, u.username 
+    FROM sales s 
+    JOIN users u ON s.user_id = u.id 
+    WHERE s.id = ?");
 $stmt->execute([$sale_id]);
 $sale = $stmt->fetch();
+
+//Get the change due
+$change_due = null;
+if ($sale['payment_method'] === 'cash' && !is_null($sale['amount_tendered'])) {
+    $change_due = $sale['amount_tendered'] - $sale['total_amount'];
+}
 
 if (!$sale) {
     http_response_code(404);
     exit('Sale not found');
 }
 
-// Fetch sale items
-$stmt = $pdo->prepare("SELECT si.*, p.name FROM sale_items si JOIN products p ON si.product_id = p.id WHERE si.sale_id = ?");
+// Fetch sale items — alias price to price_at_sale for UI compatibility
+$stmt = $pdo->prepare("
+    SELECT si.*, p.name, si.price AS price_at_sale
+    FROM sale_items si
+    JOIN products p ON si.product_id = p.id
+    WHERE si.sale_id = ?
+");
 $stmt->execute([$sale_id]);
 $items = $stmt->fetchAll();
 
@@ -38,7 +52,9 @@ $datetime = date('Y-m-d H:i:s', strtotime($sale['created_at']));
     <?php foreach ($items as $item): ?>
       <tr>
         <td><?=htmlspecialchars($item['name'])?> x<?=$item['quantity']?></td>
-        <td style="text-align:right">KES <?=number_format($item['price_at_sale'] * $item['quantity'], 2)?></td>
+        <td style="text-align:right">
+          KES <?=number_format($item['price_at_sale'] * $item['quantity'], 2)?>
+        </td>
       </tr>
     <?php endforeach; ?>
   </table>
