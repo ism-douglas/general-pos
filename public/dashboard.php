@@ -140,25 +140,6 @@ function fetchProducts(query = '') {
     });
 }
 
-// function renderProducts() {
-//   productListEl.innerHTML = '';
-//   products.forEach(prod => {
-//     const col = document.createElement('div');
-//     col.className = 'col-md-4';
-//     col.innerHTML = `
-//       <div class="card product-card p-2 h-100" onclick="addToCart(${prod.id})">
-//         <div class="card-body">
-//           <h6 class="card-title">${prod.name}</h6>
-//           <p class="card-text small mb-1 text-muted">${prod.category || ''}</p>
-//           <p class="fw-bold mb-0">KES ${parseFloat(prod.price).toFixed(2)}</p>
-//           <span class="badge bg-secondary">Stock: ${prod.stock_qty}</span>
-//         </div>
-//       </div>
-//     `;
-//     productListEl.appendChild(col);
-//   });
-// }
-
 function renderProducts() {
   productListEl.innerHTML = '';
   products.forEach(prod => {
@@ -200,25 +181,79 @@ function removeFromCart(id) {
   renderCart();
 }
 
+// function renderCart() {
+//   cartItemsEl.innerHTML = '';
+//   let total = 0;
+//   cart.forEach(item => {
+//     const itemTotal = item.quantity * item.price;
+//     total += itemTotal;
+//     const tr = document.createElement('tr');
+//     tr.innerHTML = `
+//       <td>${item.name}</td>
+//       <td><input type="number" min="1" value="${item.quantity}" class="form-control form-control-sm" style="width:60px"
+//         onchange="updateQty(${item.product_id}, this.value)"></td>
+//       <td>${item.price.toFixed(2)}</td>
+//       <td>${itemTotal.toFixed(2)}</td>
+//       <td><button class="btn btn-sm btn-danger" onclick="removeFromCart(${item.product_id})"><i class="bi bi-trash"></i></button></td>
+//     `;
+//     cartItemsEl.appendChild(tr);
+//   });
+//   cartTotalEl.textContent = 'KES ' + total.toFixed(2);
+// }
+
 function renderCart() {
+  const cartItemsEl = document.getElementById('cartItems');
   cartItemsEl.innerHTML = '';
+
   let total = 0;
-  cart.forEach(item => {
-    const itemTotal = item.quantity * item.price;
+
+  cart.forEach((item, index) => {
+    const row = document.createElement('tr');
+
+    const itemTotal = item.price * item.quantity;
     total += itemTotal;
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
+
+    row.innerHTML = `
       <td>${item.name}</td>
-      <td><input type="number" min="1" value="${item.quantity}" class="form-control form-control-sm" style="width:60px"
-        onchange="updateQty(${item.product_id}, this.value)"></td>
+      <td>
+        <input type="number" class="form-control form-control-sm qty-input" 
+               value="${item.quantity}" min="1" style="width:70px" data-index="${index}">
+      </td>
       <td>${item.price.toFixed(2)}</td>
-      <td>${itemTotal.toFixed(2)}</td>
-      <td><button class="btn btn-sm btn-danger" onclick="removeFromCart(${item.product_id})"><i class="bi bi-trash"></i></button></td>
+      <td class="item-total">KES ${itemTotal.toFixed(2)}</td>
+      <td>
+        <button class="btn btn-sm btn-danger remove-item" data-index="${index}">&times;</button>
+      </td>
     `;
-    cartItemsEl.appendChild(tr);
+
+    cartItemsEl.appendChild(row);
   });
-  cartTotalEl.textContent = 'KES ' + total.toFixed(2);
+
+  document.getElementById('cartTotal').textContent = `KES ${total.toFixed(2)}`;
+
+  // Event listener for quantity changes
+  document.querySelectorAll('.qty-input').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const idx = parseInt(e.target.dataset.index, 10);
+      let newQty = parseInt(e.target.value, 10);
+
+      if (isNaN(newQty) || newQty < 1) newQty = 1;
+
+      cart[idx].quantity = newQty;
+      renderCart(); // re-render with updated quantities
+    });
+  });
+
+  // Event listener for remove buttons
+  document.querySelectorAll('.remove-item').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const idx = parseInt(e.target.dataset.index, 10);
+      cart.splice(idx, 1);
+      renderCart();
+    });
+  });
 }
+
 
 function updateQty(id, qty) {
   const item = cart.find(i => i.product_id === id);
@@ -227,6 +262,61 @@ function updateQty(id, qty) {
     renderCart();
   }
 }
+
+// Live Update on Quantity Change
+// function updateCartTotals() {
+//     let total = 0;
+//     document.querySelectorAll('#cartItems tr').forEach(row => {
+//         const qtyInput = row.querySelector('.item-qty');
+//         const price = parseFloat(row.querySelector('.item-price').dataset.price);
+
+//         let qty = parseInt(qtyInput.value) || 0;
+//         if (qty < 1) qty = 1;
+//         qtyInput.value = qty; // enforce min
+
+//         const lineTotal = price * qty;
+//         row.querySelector('.item-line-total').textContent = `KES ${lineTotal.toFixed(2)}`;
+
+//         total += lineTotal;
+//     });
+
+//     document.querySelector('#cartTotal').textContent = `KES ${total.toFixed(2)}`;
+// }
+
+// Build the Payload from Current Cart
+// function buildSalePayload(paymentMethod, amountTendered, customerPhone = null) {
+//     const items = [];
+//     document.querySelectorAll('#cartItems tr').forEach(row => {
+//         const productId = row.dataset.productId;
+//         const qty = parseInt(row.querySelector('.item-qty').value) || 1;
+//         const price = parseFloat(row.querySelector('.item-price').dataset.price);
+//         items.push({
+//             product_id: productId,
+//             quantity: qty,
+//             price: price
+//         });
+//     });
+
+//     const payload = {
+//         payment_method: paymentMethod,
+//         amount_tendered: amountTendered,
+//         items: items
+//     };
+
+//     if (paymentMethod === 'mpesa' && customerPhone) {
+//         payload.customer_phone = customerPhone;
+//     }
+
+//     return payload;
+// }
+
+
+document.addEventListener('input', function (e) {
+    if (e.target.classList.contains('item-qty')) {
+        updateCartTotals();
+    }
+});
+
 
 btnCompleteSale.addEventListener('click', async () => {
   if (cart.length === 0) return alert('Cart is empty!');
@@ -252,7 +342,10 @@ btnCompleteSale.addEventListener('click', async () => {
 
   if (paymentMethodEl.value === 'mpesa') {
     payload.customer_phone = mpesaPhoneEl.value.trim();
-  }
+  } else if (paymentMethodEl.value === 'cash') {
+  const tendered = parseFloat(document.getElementById('amount_tendered').value) || 0;
+  payload.amount_tendered = tendered;
+ }
 
   btnCompleteSale.disabled = true;
   btnCompleteSale.textContent = 'Processing...';
@@ -288,6 +381,88 @@ btnCompleteSale.addEventListener('click', async () => {
     btnCompleteSale.textContent = 'Complete Sale';
   }
 });
+
+// btnCompleteSale.addEventListener('click', async () => {
+//   if (cart.length === 0) return alert('Cart is empty!');
+
+//   if (paymentMethodEl.value === 'mpesa') {
+//     const phone = mpesaPhoneEl.value.trim();
+//     const phonePattern = /^2547\d{8}$/;
+//     if (!phonePattern.test(phone)) {
+//       alert('Enter a valid MPESA phone number starting with 2547...');
+//       mpesaPhoneEl.focus();
+//       return;
+//     }
+//   }
+
+//   const payload = {
+//     payment_method: paymentMethodEl.value,
+//     items: cart.map(item => ({
+//       product_id: item.product_id,
+//       quantity: item.quantity,
+//       price: item.price
+//     }))
+//   };
+
+//   if (paymentMethodEl.value === 'mpesa') {
+//     payload.customer_phone = mpesaPhoneEl.value.trim();
+//   } else if (paymentMethodEl.value === 'cash') {
+//     const tendered = parseFloat(document.getElementById('amount_tendered').value) || 0;
+//     payload.amount_tendered = tendered;
+//   }
+
+//   btnCompleteSale.disabled = true;
+//   btnCompleteSale.textContent = 'Processing...';
+
+//   try {
+//     const response = await fetch('api/sales.php', {
+//       method: 'POST',
+//       headers: { 'Content-Type': 'application/json' },
+//       body: JSON.stringify(payload)
+//     });
+
+//     const result = await response.json();
+
+//     if (result.success) {
+//       // Display change due in modal BEFORE fetching receipt
+//       if (typeof result.change_due !== 'undefined') {
+//         const changeDueEl = document.getElementById('changeDueDisplay');
+//         if (changeDueEl) {
+//           changeDueEl.textContent = `KES ${parseFloat(result.change_due).toFixed(2)}`;
+//         }
+//       }
+
+//       // Display total amount as well
+//       if (typeof result.total_amount !== 'undefined') {
+//         const saleTotalEl = document.getElementById('saleTotalDisplay');
+//         if (saleTotalEl) {
+//           saleTotalEl.textContent = `KES ${parseFloat(result.total_amount).toFixed(2)}`;
+//         }
+//       }
+
+//       // Fetch receipt HTML
+//       fetch(`api/receipt.php?sale_id=${result.sale_id}`)
+//         .then(res => res.text())
+//         .then(html => {
+//           receiptContentEl.innerHTML = html;
+//           receiptModal.show();
+//         });
+
+//       cart = [];
+//       renderCart();
+//       fetchProducts();
+//     } else {
+//       alert('Error: ' + result.error);
+//     }
+//   } catch (err) {
+//     alert('Network error. Please try again.');
+//   } finally {
+//     btnCompleteSale.disabled = false;
+//     btnCompleteSale.textContent = 'Complete Sale';
+//   }
+// });
+
+
 
 btnPrintReceipt.addEventListener('click', () => {
   const printWindow = window.open('', 'Print Receipt', 'width=300,height=600');
