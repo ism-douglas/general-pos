@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../inc/auth.php';
-require_login(); // Redirects to login if not logged in
+require_login();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -61,6 +61,7 @@ require_login(); // Redirects to login if not logged in
             <select id="paymentMethod" class="form-select">
               <option value="cash" selected>Cash</option>
               <option value="mpesa">MPESA</option>
+              <option value="credit">Credit</option>
             </select>
           </div>
 
@@ -70,7 +71,7 @@ require_login(); // Redirects to login if not logged in
             <input type="number" step="1" class="form-control" id="amount_tendered">
           </div>
 
-
+          <!-- MPESA phone -->
           <div class="mb-3" id="mpesaPhoneGroup" style="display:none;">
             <label for="mpesaPhone" class="form-label">MPESA Phone Number</label>
             <input
@@ -81,6 +82,17 @@ require_login(); // Redirects to login if not logged in
               pattern="2547\d{8}"
             />
             <div class="form-text">Enter phone number starting with 2547...</div>
+          </div>
+
+          <!-- Customer details -->
+          <div class="mb-3" id="customerNameGroup">
+            <label for="customer_name" class="form-label">Customer Name</label>
+            <input type="text" id="customer_name" class="form-control" placeholder="Enter customer name">
+          </div>
+
+          <div class="mb-3" id="customerPhoneGroup">
+            <label for="customer_phone" class="form-label">Customer Phone</label>
+            <input type="text" id="customer_phone" class="form-control" placeholder="Enter customer phone">
           </div>
 
           <button class="btn btn-success w-100" id="btnCompleteSale">
@@ -122,14 +134,33 @@ const btnCompleteSale = document.getElementById('btnCompleteSale');
 const paymentMethodEl = document.getElementById('paymentMethod');
 const mpesaPhoneGroupEl = document.getElementById('mpesaPhoneGroup');
 const mpesaPhoneEl = document.getElementById('mpesaPhone');
+const amountTenderedGroupEl = document.getElementById('amountTenderedGroup');
 const receiptModal = new bootstrap.Modal(document.getElementById('receiptModal'));
 const receiptContentEl = document.getElementById('receiptContent');
 const btnPrintReceipt = document.getElementById('btnPrintReceipt');
+const customerNameEl = document.getElementById('customer_name');
+const customerPhoneEl = document.getElementById('customer_phone');
+const customerNameGroupEl = document.getElementById('customerNameGroup');
+const customerPhoneGroupEl = document.getElementById('customerPhoneGroup');
 
-paymentMethodEl.addEventListener('change', () => {
-  mpesaPhoneGroupEl.style.display = paymentMethodEl.value === 'mpesa' ? 'block' : 'none';
-  if (paymentMethodEl.value !== 'mpesa') mpesaPhoneEl.value = '';
-});
+// Update form visibility on payment method change
+function updateFormVisibility() {
+  const method = paymentMethodEl.value;
+  mpesaPhoneGroupEl.style.display = (method === 'mpesa') ? 'block' : 'none';
+  amountTenderedGroupEl.style.display = (method === 'cash') ? 'block' : 'none';
+  
+  // Hide name/phone for cash and mpesa
+  if (method === 'cash' || method === 'mpesa') {
+    customerNameGroupEl.style.display = 'none';
+    customerPhoneGroupEl.style.display = 'none';
+  } else {
+    customerNameGroupEl.style.display = 'block';
+    customerPhoneGroupEl.style.display = 'block';
+  }
+}
+
+paymentMethodEl.addEventListener('change', updateFormVisibility);
+updateFormVisibility(); // Initial state
 
 function fetchProducts(query = '') {
   fetch(`api/products.php?search=${encodeURIComponent(query)}`)
@@ -159,10 +190,8 @@ function renderProducts() {
   });
 }
 
-
 function addToCart(id) {
   const prod = products.find(p => Number(p.id) === Number(id));
-
   if (!prod || prod.stock_qty <= 0) {
     alert('Out of stock');
     return;
@@ -181,38 +210,14 @@ function removeFromCart(id) {
   renderCart();
 }
 
-// function renderCart() {
-//   cartItemsEl.innerHTML = '';
-//   let total = 0;
-//   cart.forEach(item => {
-//     const itemTotal = item.quantity * item.price;
-//     total += itemTotal;
-//     const tr = document.createElement('tr');
-//     tr.innerHTML = `
-//       <td>${item.name}</td>
-//       <td><input type="number" min="1" value="${item.quantity}" class="form-control form-control-sm" style="width:60px"
-//         onchange="updateQty(${item.product_id}, this.value)"></td>
-//       <td>${item.price.toFixed(2)}</td>
-//       <td>${itemTotal.toFixed(2)}</td>
-//       <td><button class="btn btn-sm btn-danger" onclick="removeFromCart(${item.product_id})"><i class="bi bi-trash"></i></button></td>
-//     `;
-//     cartItemsEl.appendChild(tr);
-//   });
-//   cartTotalEl.textContent = 'KES ' + total.toFixed(2);
-// }
-
 function renderCart() {
-  const cartItemsEl = document.getElementById('cartItems');
   cartItemsEl.innerHTML = '';
-
   let total = 0;
 
   cart.forEach((item, index) => {
-    const row = document.createElement('tr');
-
     const itemTotal = item.price * item.quantity;
     total += itemTotal;
-
+    const row = document.createElement('tr');
     row.innerHTML = `
       <td>${item.name}</td>
       <td>
@@ -225,26 +230,21 @@ function renderCart() {
         <button class="btn btn-sm btn-danger remove-item" data-index="${index}">&times;</button>
       </td>
     `;
-
     cartItemsEl.appendChild(row);
   });
 
-  document.getElementById('cartTotal').textContent = `KES ${total.toFixed(2)}`;
+  cartTotalEl.textContent = `KES ${total.toFixed(2)}`;
 
-  // Event listener for quantity changes
   document.querySelectorAll('.qty-input').forEach(input => {
     input.addEventListener('input', (e) => {
       const idx = parseInt(e.target.dataset.index, 10);
       let newQty = parseInt(e.target.value, 10);
-
       if (isNaN(newQty) || newQty < 1) newQty = 1;
-
       cart[idx].quantity = newQty;
-      renderCart(); // re-render with updated quantities
+      renderCart();
     });
   });
 
-  // Event listener for remove buttons
   document.querySelectorAll('.remove-item').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const idx = parseInt(e.target.dataset.index, 10);
@@ -254,85 +254,14 @@ function renderCart() {
   });
 }
 
-
-function updateQty(id, qty) {
-  const item = cart.find(i => i.product_id === id);
-  if (item) {
-    item.quantity = parseInt(qty) || 1;
-    renderCart();
-  }
-}
-
-// Live Update on Quantity Change
-// function updateCartTotals() {
-//     let total = 0;
-//     document.querySelectorAll('#cartItems tr').forEach(row => {
-//         const qtyInput = row.querySelector('.item-qty');
-//         const price = parseFloat(row.querySelector('.item-price').dataset.price);
-
-//         let qty = parseInt(qtyInput.value) || 0;
-//         if (qty < 1) qty = 1;
-//         qtyInput.value = qty; // enforce min
-
-//         const lineTotal = price * qty;
-//         row.querySelector('.item-line-total').textContent = `KES ${lineTotal.toFixed(2)}`;
-
-//         total += lineTotal;
-//     });
-
-//     document.querySelector('#cartTotal').textContent = `KES ${total.toFixed(2)}`;
-// }
-
-// Build the Payload from Current Cart
-// function buildSalePayload(paymentMethod, amountTendered, customerPhone = null) {
-//     const items = [];
-//     document.querySelectorAll('#cartItems tr').forEach(row => {
-//         const productId = row.dataset.productId;
-//         const qty = parseInt(row.querySelector('.item-qty').value) || 1;
-//         const price = parseFloat(row.querySelector('.item-price').dataset.price);
-//         items.push({
-//             product_id: productId,
-//             quantity: qty,
-//             price: price
-//         });
-//     });
-
-//     const payload = {
-//         payment_method: paymentMethod,
-//         amount_tendered: amountTendered,
-//         items: items
-//     };
-
-//     if (paymentMethod === 'mpesa' && customerPhone) {
-//         payload.customer_phone = customerPhone;
-//     }
-
-//     return payload;
-// }
-
-
-document.addEventListener('input', function (e) {
-    if (e.target.classList.contains('item-qty')) {
-        updateCartTotals();
-    }
-});
-
-
 btnCompleteSale.addEventListener('click', async () => {
   if (cart.length === 0) return alert('Cart is empty!');
 
-  if (paymentMethodEl.value === 'mpesa') {
-    const phone = mpesaPhoneEl.value.trim();
-    const phonePattern = /^2547\d{8}$/;
-    if (!phonePattern.test(phone)) {
-      alert('Enter a valid MPESA phone number starting with 2547...');
-      mpesaPhoneEl.focus();
-      return;
-    }
-  }
-
+  const paymentMethod = paymentMethodEl.value;
   const payload = {
-    payment_method: paymentMethodEl.value,
+    payment_method: paymentMethod,
+    customer_name: customerNameEl.value.trim(),
+    customer_phone: customerPhoneEl.value.trim(),
     items: cart.map(item => ({
       product_id: item.product_id,
       quantity: item.quantity,
@@ -340,12 +269,25 @@ btnCompleteSale.addEventListener('click', async () => {
     }))
   };
 
-  if (paymentMethodEl.value === 'mpesa') {
+  if (paymentMethod === 'mpesa') {
+    const phonePattern = /^2547\d{8}$/;
+    if (!phonePattern.test(mpesaPhoneEl.value.trim())) {
+      alert('Enter a valid MPESA phone number starting with 2547...');
+      return;
+    }
     payload.customer_phone = mpesaPhoneEl.value.trim();
-  } else if (paymentMethodEl.value === 'cash') {
-  const tendered = parseFloat(document.getElementById('amount_tendered').value) || 0;
-  payload.amount_tendered = tendered;
- }
+  }
+
+  if (paymentMethod === 'cash') {
+    payload.amount_tendered = parseFloat(document.getElementById('amount_tendered').value) || 0;
+  }
+
+  if (paymentMethod === 'credit') {
+    if (!payload.customer_name || !payload.customer_phone) {
+      alert('Please enter customer name and phone for credit sales.');
+      return;
+    }
+  }
 
   btnCompleteSale.disabled = true;
   btnCompleteSale.textContent = 'Processing...';
@@ -358,16 +300,13 @@ btnCompleteSale.addEventListener('click', async () => {
     });
 
     const result = await response.json();
-
     if (result.success) {
-      // Fetch receipt HTML
       fetch(`api/receipt.php?sale_id=${result.sale_id}`)
         .then(res => res.text())
         .then(html => {
           receiptContentEl.innerHTML = html;
           receiptModal.show();
         });
-
       cart = [];
       renderCart();
       fetchProducts();
@@ -382,96 +321,9 @@ btnCompleteSale.addEventListener('click', async () => {
   }
 });
 
-// btnCompleteSale.addEventListener('click', async () => {
-//   if (cart.length === 0) return alert('Cart is empty!');
-
-//   if (paymentMethodEl.value === 'mpesa') {
-//     const phone = mpesaPhoneEl.value.trim();
-//     const phonePattern = /^2547\d{8}$/;
-//     if (!phonePattern.test(phone)) {
-//       alert('Enter a valid MPESA phone number starting with 2547...');
-//       mpesaPhoneEl.focus();
-//       return;
-//     }
-//   }
-
-//   const payload = {
-//     payment_method: paymentMethodEl.value,
-//     items: cart.map(item => ({
-//       product_id: item.product_id,
-//       quantity: item.quantity,
-//       price: item.price
-//     }))
-//   };
-
-//   if (paymentMethodEl.value === 'mpesa') {
-//     payload.customer_phone = mpesaPhoneEl.value.trim();
-//   } else if (paymentMethodEl.value === 'cash') {
-//     const tendered = parseFloat(document.getElementById('amount_tendered').value) || 0;
-//     payload.amount_tendered = tendered;
-//   }
-
-//   btnCompleteSale.disabled = true;
-//   btnCompleteSale.textContent = 'Processing...';
-
-//   try {
-//     const response = await fetch('api/sales.php', {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify(payload)
-//     });
-
-//     const result = await response.json();
-
-//     if (result.success) {
-//       // Display change due in modal BEFORE fetching receipt
-//       if (typeof result.change_due !== 'undefined') {
-//         const changeDueEl = document.getElementById('changeDueDisplay');
-//         if (changeDueEl) {
-//           changeDueEl.textContent = `KES ${parseFloat(result.change_due).toFixed(2)}`;
-//         }
-//       }
-
-//       // Display total amount as well
-//       if (typeof result.total_amount !== 'undefined') {
-//         const saleTotalEl = document.getElementById('saleTotalDisplay');
-//         if (saleTotalEl) {
-//           saleTotalEl.textContent = `KES ${parseFloat(result.total_amount).toFixed(2)}`;
-//         }
-//       }
-
-//       // Fetch receipt HTML
-//       fetch(`api/receipt.php?sale_id=${result.sale_id}`)
-//         .then(res => res.text())
-//         .then(html => {
-//           receiptContentEl.innerHTML = html;
-//           receiptModal.show();
-//         });
-
-//       cart = [];
-//       renderCart();
-//       fetchProducts();
-//     } else {
-//       alert('Error: ' + result.error);
-//     }
-//   } catch (err) {
-//     alert('Network error. Please try again.');
-//   } finally {
-//     btnCompleteSale.disabled = false;
-//     btnCompleteSale.textContent = 'Complete Sale';
-//   }
-// });
-
-
-
 btnPrintReceipt.addEventListener('click', () => {
   const printWindow = window.open('', 'Print Receipt', 'width=300,height=600');
-  printWindow.document.write(`
-    <html>
-      <head><title>Receipt</title></head>
-      <body>${receiptContentEl.innerHTML}</body>
-    </html>
-  `);
+  printWindow.document.write(`<html><head><title>Receipt</title></head><body>${receiptContentEl.innerHTML}</body></html>`);
   printWindow.document.close();
   printWindow.focus();
   printWindow.print();
