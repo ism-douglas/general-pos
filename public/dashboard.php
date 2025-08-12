@@ -68,7 +68,9 @@ require_login();
           <!-- Amount tendered -->
           <div class="mb-3" id="amountTenderedGroup">
             <label for="amount_tendered" class="form-label">Amount Tendered</label>
-            <input type="number" step="1" class="form-control" id="amount_tendered">
+            <!-- <input type="number" step="1" class="form-control" id="amount_tendered"> -->
+            <input type="text" pattern="\d*" inputmode="numeric" class="form-control" id="amount_tendered">
+
           </div>
 
           <!-- MPESA phone -->
@@ -143,13 +145,11 @@ const customerPhoneEl = document.getElementById('customer_phone');
 const customerNameGroupEl = document.getElementById('customerNameGroup');
 const customerPhoneGroupEl = document.getElementById('customerPhoneGroup');
 
-// Update form visibility on payment method change
 function updateFormVisibility() {
   const method = paymentMethodEl.value;
   mpesaPhoneGroupEl.style.display = (method === 'mpesa') ? 'block' : 'none';
   amountTenderedGroupEl.style.display = (method === 'cash') ? 'block' : 'none';
   
-  // Hide name/phone for cash and mpesa
   if (method === 'cash' || method === 'mpesa') {
     customerNameGroupEl.style.display = 'none';
     customerPhoneGroupEl.style.display = 'none';
@@ -160,7 +160,7 @@ function updateFormVisibility() {
 }
 
 paymentMethodEl.addEventListener('change', updateFormVisibility);
-updateFormVisibility(); // Initial state
+updateFormVisibility();
 
 function fetchProducts(query = '') {
   fetch(`api/products.php?search=${encodeURIComponent(query)}`)
@@ -222,7 +222,7 @@ function renderCart() {
       <td>${item.name}</td>
       <td>
         <input type="number" class="form-control form-control-sm qty-input" 
-               value="${item.quantity}" min="1" style="width:70px" data-index="${index}">
+               value="${item.quantity}" min="1" style="width:70px" data-index="${index}"> 
       </td>
       <td>${item.price.toFixed(2)}</td>
       <td class="item-total">KES ${itemTotal.toFixed(2)}</td>
@@ -252,6 +252,16 @@ function renderCart() {
       renderCart();
     });
   });
+}
+
+// NEW: Clear form fields function
+function clearFormFields() {
+  paymentMethodEl.value = 'cash';
+  mpesaPhoneEl.value = '';
+  document.getElementById('amount_tendered').value = '';
+  customerNameEl.value = '';
+  customerPhoneEl.value = '';
+  updateFormVisibility();
 }
 
 btnCompleteSale.addEventListener('click', async () => {
@@ -310,6 +320,7 @@ btnCompleteSale.addEventListener('click', async () => {
       cart = [];
       renderCart();
       fetchProducts();
+      clearFormFields(); // Clear after successful payment
     } else {
       alert('Error: ' + result.error);
     }
@@ -319,6 +330,14 @@ btnCompleteSale.addEventListener('click', async () => {
     btnCompleteSale.disabled = false;
     btnCompleteSale.textContent = 'Complete Sale';
   }
+});
+
+
+// Prevent mouse wheel from changing number inputs
+document.querySelectorAll('input[type=number]').forEach(input => {
+  input.addEventListener('wheel', function (e) {
+    e.preventDefault();
+  });
 });
 
 btnPrintReceipt.addEventListener('click', () => {
