@@ -29,12 +29,13 @@ if ($sale['payment_method'] === 'cash' && !is_null($sale['amount_tendered'])) {
     $change_due = $sale['amount_tendered'] - $sale['total_amount'];
 }
 
-// Fetch sale items — alias price to price_at_sale for UI compatibility
+// Fetch sale items and group them by product
 $stmt = $pdo->prepare("
-    SELECT si.*, p.name, si.price AS price_at_sale
+    SELECT p.name, si.price AS price_at_sale, SUM(si.quantity) AS total_quantity
     FROM sale_items si
     JOIN products p ON si.product_id = p.id
     WHERE si.sale_id = ?
+    GROUP BY p.id, p.name, si.price
 ");
 $stmt->execute([$sale_id]);
 $items = $stmt->fetchAll();
@@ -51,9 +52,9 @@ $datetime = date('Y-m-d H:i:s', strtotime($sale['created_at']));
   <table style="width: 100%;">
     <?php foreach ($items as $item): ?>
       <tr>
-        <td><?=htmlspecialchars($item['name'])?> x<?=$item['quantity']?></td>
+        <td><?=htmlspecialchars($item['name'])?> x<?=$item['total_quantity']?></td>
         <td style="text-align:right">
-          KES <?=number_format($item['price_at_sale'] * $item['quantity'], 2)?>
+          KES <?=number_format($item['price_at_sale'] * $item['total_quantity'], 2)?>
         </td>
       </tr>
     <?php endforeach; ?>
@@ -67,16 +68,18 @@ $datetime = date('Y-m-d H:i:s', strtotime($sale['created_at']));
     Payment Method: <?=htmlspecialchars(strtoupper($sale['payment_method']))?>
   </div>
 
-  <?php if ($sale['payment_method'] === 'cash'): ?>
-    <div>Amount Tendered: KES <?=number_format($sale['amount_tendered'], 2)?></div>
-    <div>Change Due: KES <?=number_format($change_due, 2)?></div>
-  <?php endif; ?>
+<?php if ($sale['payment_method'] === 'cash'): ?>
+  <div>Amount Tendered: KES <?=number_format($sale['amount_tendered'], 2)?></div>
+  <div>Change Due: KES <?=number_format($change_due, 2)?></div>
+<?php endif; ?>
 
-  <?php if ($sale['payment_method'] === 'credit'): ?>
-    <div>Customer Name: <?=htmlspecialchars($sale['customer_name'] ?? '')?></div>
-    <div>Customer Phone: <?=htmlspecialchars($sale['customer_phone'] ?? '')?></div>
-  <?php endif; ?>
+<?php if ($sale['payment_method'] === 'credit'): ?>
+  <div>Customer Name: <?=htmlspecialchars($sale['customer_name'])?></div>
+  <div>Customer Phone: <?=htmlspecialchars($sale['customer_phone'])?></div>
+<?php endif; ?>
 
   <hr>
-  <div style="text-align:center;">Thank you for your business!</div>
+  <div style="text-align:center;">
+    You were served by: <?=htmlspecialchars($sale['username'])?>
+  </div>
 </div>
