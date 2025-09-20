@@ -191,19 +191,28 @@ function renderProducts() {
 }
 
 function addToCart(id) {
-  const prod = products.find(p => Number(p.id) === Number(id));
+  id = Number(id); // normalize id to number
+  const prod = products.find(p => Number(p.id) === id);
   if (!prod || prod.stock_qty <= 0) {
     alert('Out of stock');
     return;
   }
-  const existing = cart.find(item => item.product_id === id);
+
+  // FIX: use consistent number comparison
+  const existing = cart.find(item => Number(item.product_id) === id);
   if (existing) {
     existing.quantity += 1;
   } else {
-    cart.push({ product_id: prod.id, name: prod.name, quantity: 1, price: parseFloat(prod.price) });
+    cart.push({
+      product_id: id,
+      name: prod.name,
+      quantity: 1,
+      price: parseFloat(prod.price)
+    });
   }
   renderCart();
 }
+
 
 function removeFromCart(id) {
   cart = cart.filter(item => item.product_id !== id);
